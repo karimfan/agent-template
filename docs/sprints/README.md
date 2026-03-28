@@ -6,25 +6,25 @@ This directory contains sprint planning documents for development.
 
 ```bash
 # View sprint stats
-python3 docs/sprints/ledger.py stats
+go run docs/sprints/tracker.go stats
 
 # List all sprints
-python3 docs/sprints/ledger.py list
+go run docs/sprints/tracker.go list
 
 # List by status
-python3 docs/sprints/ledger.py list --status completed
+go run docs/sprints/tracker.go list --status completed
 
-# Sync ledger from .md files (run after creating new sprints)
-python3 docs/sprints/ledger.py sync
+# Sync tracker from .md files (run after creating new sprints)
+go run docs/sprints/tracker.go sync
 
 # Start a sprint
-python3 docs/sprints/ledger.py start 018
+go run docs/sprints/tracker.go start 018
 
 # Complete a sprint
-python3 docs/sprints/ledger.py complete 018
+go run docs/sprints/tracker.go complete 018
 
 # Add a new sprint manually
-python3 docs/sprints/ledger.py add 019 "Sprint Title"
+go run docs/sprints/tracker.go add 019 "Sprint Title"
 ```
 
 ## File Structure
@@ -32,8 +32,8 @@ python3 docs/sprints/ledger.py add 019 "Sprint Title"
 ```
 docs/sprints/
 ├── README.md           # This file
-├── ledger.tsv          # Sprint tracking database (TSV format)
-├── ledger.py           # CLI tool for sprint management
+├── tracker.tsv         # Sprint tracking database (TSV format)
+├── tracker.go          # CLI tool for sprint management
 ├── SPRINT-001.md       # Sprint documents (zero-padded 3 digits)
 ├── SPRINT-002.md
 └── ...
@@ -53,9 +53,9 @@ docs/sprints/
 
 3. **Use the standard template** (see below)
 
-4. **Sync the ledger**:
+4. **Sync the tracker**:
    ```bash
-   python3 docs/sprints/ledger.py sync
+   go run docs/sprints/tracker.go sync
    ```
 
 ## Sprint Document Template
@@ -81,7 +81,7 @@ Diagrams, component descriptions, data flow.
 ### Phase 1: Name (~X%)
 
 **Files:**
-- `path/to/file.rs` - Description
+- `path/to/file.go` - Description
 
 **Tasks:**
 - [ ] Task 1
@@ -147,18 +147,18 @@ Diagrams, component descriptions, data flow.
 
 ### Lifecycle
 1. Create sprint doc with status `planned`
-2. Run `ledger.py sync` to add to ledger
-3. When starting: `ledger.py start NNN`
-4. When done: `ledger.py complete NNN`
+2. Run `tracker.go sync` to add to tracker
+3. When starting: `tracker.go start NNN`
+4. When done: `tracker.go complete NNN`
 
 ### For AI Assistants
 
 When asked to create a sprint:
 1. Check the highest existing sprint number
 2. Create `SPRINT-{N+1}.md` using the template
-3. Run `python3 docs/sprints/ledger.py sync`
-4. Update `ledger.py` status if starting immediately
+3. Run `go run docs/sprints/tracker.go sync`
+4. Update tracker status if starting immediately
 
 When completing work:
 1. Update the sprint document with results
-2. Run `python3 docs/sprints/ledger.py complete NNN`
+2. Run `go run docs/sprints/tracker.go complete NNN`

@@ -1,9 +1,9 @@
 ---
-name: megaplan
+name: kplan
 description: Multi-agent collaborative sprint planning workflow  (orient, intent, draft, interview, compete with Codex, merge).
 ---
 
-# Mega Plan: Collaborative Multi-Agent Planning
+# K Plan: Collaborative Multi-Agent Planning
 
 You are orchestrating a sophisticated planning workflow that produces high-quality sprint documents through competitive ideation and synthesis with Codex.
 
@@ -33,7 +33,7 @@ Use TodoWrite to track progress through each phase.
 1. Read `CLAUDE.md` for project conventions
 2. Check sprint ledger status:
    ```bash
-   python3 docs/sprints/ledger.py stats
+   go run docs/sprints/tracker.go stats
    ```
 3. Read the **3 highest-numbered sprint documents** to understand recent work:
    - Use `ls docs/sprints/SPRINT-*.md | tail -3` to find them
@@ -273,7 +273,7 @@ Once Codex completes, read both files:
 
 5. **Update the ledger**:
    ```bash
-   python3 docs/sprints/ledger.py sync
+   go run docs/sprints/tracker.go sync
    ```
 
 6. **Show the user** the final document and ask for approval.
@@ -309,7 +309,7 @@ At the end of this workflow, you should have:
 - [ ] Codex critique received (`drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md`)
 - [ ] Merge notes written (`drafts/SPRINT-NNN-MERGE-NOTES.md`)
 - [ ] Final sprint document written (`SPRINT-NNN.md`)
-- [ ] Ledger updated via `python3 docs/sprints/ledger.py sync`
+- [ ] Ledger updated via `go run docs/sprints/tracker.go sync`
 - [ ] User approved the final document
 
 ---

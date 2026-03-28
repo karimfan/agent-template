@@ -1,6 +1,6 @@
 ---
 name: sprint
-description: Begin and complete the next incomplete sprint (ledger.py, Definition of Done, build/test, commit/push, optional deploy).
+description: Begin and complete the next incomplete sprint (tracker.go, Definition of Done, build/test, commit/push, optional deploy).
 ---
 
 ## Task
@@ -8,17 +8,17 @@ description: Begin and complete the next incomplete sprint (ledger.py, Definitio
 Begin the next sprint. Follow these steps:
 
 1. **Find the next incomplete sprint**
-   - Run `python3 docs/sprints/ledger.py stats` to see sprint status
+   - Run `go run docs/sprints/tracker.go stats` to see sprint status
    - Identify the lowest-numbered sprint that is NOT completed
    - Read that sprint document: `docs/sprints/SPRINT-NNN.md`
 
 2. **Mark sprint in progress**
-   - Run `python3 docs/sprints/ledger.py start NNN`
+   - Run `go run docs/sprints/tracker.go start NNN`
 
 3. **Complete the sprint**
    - Work through ALL items in the Definition of Done
    - Implement all required functionality per the sprint document
-   - Run `cargo build` and `cargo test` to validate
+   - Run `go vet ./...` to validate
    - Fix any build or test failures
    - Ensure all validation passes per repo standards
 
@@ -28,7 +28,7 @@ Begin the next sprint. Follow these steps:
    - Push to the remote repository
 
 5. **Mark sprint completed**
-   - Run `python3 docs/sprints/ledger.py complete NNN`
+   - Run `go run docs/sprints/tracker.go complete NNN`
    - Commit the ledger update
    - Push the completion
 
