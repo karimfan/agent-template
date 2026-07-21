@@ -316,6 +316,33 @@ Once Codex completes, read both files:
 
 6. **Show the user** the final document and ask for approval.
 
+7. **Cut an implementation branch (only after the user approves).** Never
+   implement on `main`. Once — and only once — the user has approved the final
+   sprint document, create a dedicated branch so all subsequent coding lands off
+   `main`. The uncommitted planning drafts and `SPRINT-NNN.md` you just wrote
+   travel onto the new branch automatically (`git checkout -b` carries the
+   working tree with it).
+
+   ```bash
+   # Derive a kebab-case slug from the sprint title, e.g. "Connector Fleet" -> connector-fleet
+   current=$(git rev-parse --abbrev-ref HEAD)
+   if [ "$current" = "main" ]; then
+     git checkout -b "sprint/SPRINT-NNN-<slug>"
+   else
+     echo "Already on '$current' (not main) — staying on this branch; no new branch created."
+   fi
+   ```
+
+   Rules:
+   - Do this **after** approval, never before. If the user requests changes
+     instead of approving, keep iterating on the current branch and re-ask.
+   - If already on a non-`main` branch, do not create a second branch — reuse
+     the current one and say so.
+   - Do not commit or push here; this step only establishes the branch. Commits
+     happen during implementation (e.g. the `sprint` skill), following the
+     repo's Conventional Commits convention.
+   - Confirm to the user which branch implementation will happen on.
+
 ---
 
 ## File Structure
@@ -350,6 +377,7 @@ At the end of this workflow, you should have:
 - [ ] Final sprint document includes a `## Documentation Manifest` section (NEW ADRs + amended ADRs + cross-cutting docs, or an explicit "no docs required because …")
 - [ ] Ledger updated via `go run docs/sprints/tracker.go sync`
 - [ ] User approved the final document
+- [ ] Implementation branch cut off `main` after approval (or intentionally reused an existing non-`main` branch)
 
 ---
 
