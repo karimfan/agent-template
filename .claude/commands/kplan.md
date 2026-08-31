@@ -214,6 +214,19 @@ Notes on the invocation:
 - `< /dev/null` closes stdin. When `codex exec` is launched in a background or non-interactive context with stdin still open, it can hang waiting for input even though the prompt was provided as an argument.
 - The prompt references `AGENTS.md`, not `CLAUDE.md` — this repo does not have a `CLAUDE.md`.
 
+Invocation reliability requirements:
+
+- Run the command as a yielded/pollable process and keep the user informed at
+  least once per minute.
+- Treat 5 minutes with no terminal output **and** neither expected artifact as
+  a stalled attempt. Interrupt it, verify `codex --version`, and retry once with
+  the same required files and a shorter prompt. Keep `< /dev/null` on the retry.
+- After exit, verify both expected files exist, are non-empty, and have the
+  requested roles. Do not trust process exit status alone.
+- If the retry also stalls or fails, stop and report the compete phase as
+  blocked. Preserve the completed orientation, intent, draft, and interview;
+  do not fabricate a competing draft or critique and do not merge without it.
+
 ### Wait for Codex to complete.
 
 Codex will produce:
@@ -323,11 +336,19 @@ Once Codex completes, read both files:
    travel onto the new branch automatically (`git checkout -b` carries the
    working tree with it).
 
+   Branch naming follows the repo convention `project/<project>/<milestone>`
+   (e.g. `project/chat-providers-vertical-slice/m6-electron-chat`). Map it as:
+   - `<project>` — the kebab-case slug of the project this sprint belongs to,
+     as identified during Phase 1 orientation (match an existing
+     `docs/projects/<slug>/` directory when one applies).
+   - `<milestone>` — this sprint, as `sprint-NNN-<slug>`, where `<slug>` is a
+     kebab-case slug of the sprint title (e.g. "Connector Fleet" ->
+     `connector-fleet`).
+
    ```bash
-   # Derive a kebab-case slug from the sprint title, e.g. "Connector Fleet" -> connector-fleet
    current=$(git rev-parse --abbrev-ref HEAD)
    if [ "$current" = "main" ]; then
-     git checkout -b "sprint/SPRINT-NNN-<slug>"
+     git checkout -b "project/<project>/sprint-NNN-<slug>"
    else
      echo "Already on '$current' (not main) — staying on this branch; no new branch created."
    fi
