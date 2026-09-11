@@ -2,408 +2,295 @@
 description: Multi-agent collaborative planning - draft, interview, compete with Codex, merge
 ---
 
-# K Plan: Collaborative Multi-Agent Planning
+# kplan: Collaborative Sprint Planning
 
-You are orchestrating a sophisticated planning workflow that produces high-quality sprint documents through competitive ideation and synthesis with Codex.
+## Background
 
-## Seed Prompt
+### Role
+
+You are the planner. You turn the seed below into an approved sprint document
+by writing your own draft, interviewing the user, obtaining an independent
+draft and critique from Codex, and merging the results. Codex is an external
+CLI (`codex exec`). You are the only agent that talks to the user.
+
+### Seed
 
 $ARGUMENTS
 
-## Workflow Overview
+### Repo assumptions
 
-This is a **6-phase workflow**:
-1. **Orient** - Review project and recent sprints
-2. **Intent** - Write concentrated intent document
-3. **Draft** - Create your draft plan
-4. **Interview** - Clarify with the human planner
-5. **Compete** - Codex creates competing draft + critiques yours
-6. **Merge** - Synthesize best ideas into final sprint document
+This command is installed at user level and runs in whichever repo you are in.
+Resolve each of these before Phase 1 and reuse the answers throughout.
 
-Use TodoWrite to track progress through each phase.
+- **Conventions file**: if `AGENTS.md` exists, that is the conventions file.
+  Else if `CLAUDE.md` exists, use it. Else there is none: say so in the
+  orientation summary and rely on the code. Wherever this document says "the
+  conventions file", substitute the file you resolved. In the prompt you hand
+  to Codex, name the actual file; never name a file that does not exist.
+- **Sprint tooling**: `docs/sprints/README.md` (template and conventions) and
+  `docs/sprints/tracker.go` (ledger CLI). If `docs/sprints/` does not exist,
+  stop and tell the user this repo is not set up for sprint planning; do not
+  scaffold it. If the README exists but `tracker.go` does not, skip every
+  `tracker.go` command below and say so in the final report.
+- **Sprint number** `NNN`: one more than the highest existing
+  `docs/sprints/SPRINT-*.md`, zero-padded to 3 digits (`001` if none exist).
+  Every `NNN` below is this number.
+- **Branch**: `git rev-parse --abbrev-ref HEAD`. Whether it is `main` decides
+  Phase 6 step 6.
+
+### Sprint document contract
+
+A sprint document (draft or final) follows the template in
+`docs/sprints/README.md` plus these sections, which kplan requires even if the
+README does not list them:
+
+- `## Risks & Mitigations`: table with columns Risk, Likelihood, Impact,
+  Mitigation.
+- `## Open Questions`: uncertainties the implementer must resolve.
+- `## Documentation Manifest`: the format below. Never omitted, never empty.
+
+The Documentation Manifest is the contract the `sprint` skill enforces before
+it marks a sprint complete: every file listed must change during
+implementation. Format:
+
+```markdown
+## Documentation Manifest
+
+The implementation sprint MUST land the following docs changes alongside the
+code. The `sprint` skill verifies each listed file changed before marking the
+sprint complete.
+
+### New ADRs
+
+- `docs/adr/NNNN-<slug>.md` — one paragraph on what it codifies.
+
+### Amended ADRs
+
+- `docs/adr/NNNN-<existing>.md` — one sentence on which decision changes.
+  The amendment lands as a new section headed `## Sprint NNN amendment`.
+
+### Cross-cutting docs
+
+- `<path>` — what to update. List every doc outside `docs/adr/` that
+  describes behaviour this sprint changes (for example a status page, an
+  architecture overview, or a local setup guide).
+
+### Skipped (with reasoning)
+
+- `<path>` — considered, not touched because <reason>.
+```
+
+A sprint that needs no docs changes still gets the section, containing only
+"No documentation changes required because <reason>."
 
 ---
 
-## Phase 1: Orient
+## Behaviour
 
-**Goal**: Understand current project state and recent direction.
+Track the six phases with TodoWrite and run them in order; each phase's
+artifact feeds a later one. Never fabricate an artifact you did not produce.
+If a phase is blocked, stop and report it as described under Output.
 
-### Steps:
-1. Read `AGENTS.md` for project conventions (this repo uses AGENTS.md, not CLAUDE.md)
-2. Check sprint ledger status:
-   ```bash
-   go run docs/sprints/tracker.go stats
-   ```
-3. Read the **3 highest-numbered sprint documents** to understand recent work:
-   - Use `ls docs/sprints/SPRINT-*.md | tail -3` to find them
-   - Read each one to understand recent trajectory
-4. Identify relevant code areas for the seed prompt:
-   - Search for related modules, types, or patterns
-   - Note existing implementations that this plan might extend
+### Phase 1: Orient
 
-### Deliverable:
-Write a brief **Orientation Summary** (3-5 bullet points) covering:
-- Current project state relevant to the seed
-- Recent sprint themes/direction
-- Key modules/files likely involved
-- Constraints or patterns to respect
+1. Read the conventions file.
+2. Run `go run docs/sprints/tracker.go stats`.
+3. Read the three highest-numbered sprint documents:
+   `ls docs/sprints/SPRINT-*.md | sort | tail -3`.
+4. Search the code for the modules, types, and patterns the seed touches. Note
+   existing implementations this sprint would extend and the constraints it
+   must respect (architecture, naming, test conventions).
 
----
+Deliverable: an orientation summary of 3-5 bullets covering current state
+relevant to the seed, recent sprint direction, likely files and modules, and
+constraints. It is reused verbatim in Phase 2.
 
-## Phase 2: Intent
+### Phase 2: Intent
 
-**Goal**: Create a concentrated intent document that both agents will use.
-
-### Steps:
-
-1. Determine the next sprint number:
-   ```bash
-   ls docs/sprints/SPRINT-*.md | tail -1
-   ```
-   Extract NNN and increment.
-
-2. Create the drafts directory if needed:
-   ```bash
-   mkdir -p docs/sprints/drafts
-   ```
-
-3. Write the intent document to `docs/sprints/drafts/SPRINT-NNN-INTENT.md`:
+Run `mkdir -p docs/sprints/drafts`, then write
+`docs/sprints/drafts/SPRINT-NNN-INTENT.md`. Both agents read this file, so it
+must be self-contained:
 
 ```markdown
 # Sprint NNN Intent: [Title]
 
 ## Seed
 
-[The original $ARGUMENTS prompt]
+[The seed, verbatim]
 
 ## Context
 
-[Your orientation summary from Phase 1]
+[Orientation summary from Phase 1]
 
 ## Recent Sprint Context
 
-[Brief summaries of the 3 recent sprints you reviewed]
+[One short paragraph per sprint read in Phase 1]
 
 ## Relevant Codebase Areas
 
-[Key modules, files, patterns identified during orientation]
+[Modules, files, and patterns identified in Phase 1]
 
 ## Constraints
 
-- Must follow project conventions in AGENTS.md
-- Must integrate with existing architecture
-- [Any other constraints identified]
+- Must follow the conventions in <conventions file, or "the existing code" if none>
+- Must follow the sprint conventions in docs/sprints/README.md
+- Must integrate with the existing architecture
+- [Other constraints identified]
+
+## Required Sections
+
+Drafts follow the template in docs/sprints/README.md plus
+`## Risks & Mitigations`, `## Open Questions`, and `## Documentation Manifest`
+in this format:
+
+[Copy the Documentation Manifest format from the sprint document contract]
 
 ## Success Criteria
 
-What would make this sprint successful?
+[What makes this sprint successful]
 
 ## Open Questions
 
-Questions that the drafts should attempt to answer.
+[Questions the drafts should try to answer]
 ```
 
----
+### Phase 3: Draft
 
-## Phase 3: Draft (Claude)
+Write `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT.md` following the sprint
+document contract in full, including a Documentation Manifest, so Codex can
+critique every section.
 
-**Goal**: Create your comprehensive draft plan.
+### Phase 4: Interview
 
-### Write to: `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT.md`
+Use AskUserQuestion to ask 2-4 questions. Choose from these topics and skip
+any the seed already answers unambiguously:
 
-Follow the standard sprint template from `docs/sprints/README.md`:
+1. Scope: does the draft's scope match the user's intent, or should it expand
+   or narrow?
+2. Priority: which parts are critical versus nice-to-have?
+3. Technical preferences: strong opinions on architecture, sequencing, naming,
+   or approach?
+4. Sequencing: external dependencies, ordering constraints, or risks the draft
+   missed?
 
-```markdown
-# Sprint NNN: [Title]
+Append the questions and answers to the intent document under a new
+`## Interview Answers` section so Codex drafts against them. Apply them to
+your own draft in Phase 6, not now.
 
-## Overview
+### Phase 5: Compete
 
-2-3 paragraphs on the "why" and high-level approach.
-
-## Use Cases
-
-1. **Use case name**: Description
-2. ...
-
-## Architecture
-
-Diagrams (ASCII art), component descriptions, data flow.
-
-## Implementation Plan
-
-### Phase 1: [Name] (~X%)
-
-**Files:**
-- `path/to/file.rs` - Description
-
-**Tasks:**
-- [ ] Task 1
-- [ ] Task 2
-
-### Phase 2: ...
-
-## Files Summary
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `path/to/file` | Create/Modify | Description |
-
-## Definition of Done
-
-- [ ] Criterion 1
-- [ ] Criterion 2
-- [ ] Tests pass
-- [ ] No compiler warnings
-
-## Risks & Mitigations
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| ... | ... | ... | ... |
-
-## Security Considerations
-
-- Item 1
-- Item 2
-
-## Dependencies
-
-- Sprint NNN (if any)
-- External requirements
-
-## Open Questions
-
-Uncertainties needing resolution.
-```
-
----
-
-## Phase 4: Interview
-
-**Goal**: Refine understanding through human dialogue.
-
-### Conduct the interview:
-
-Use AskUserQuestion to ask **2-4 targeted questions** covering:
-
-1. **Scope validation**: "Does this scope match your intent, or should we expand/narrow?"
-2. **Priority/trade-offs**: "Which aspects are most critical vs. nice-to-have?"
-3. **Technical preferences**: Any strong opinions on approach?
-4. **Sequencing**: Any external dependencies or ordering constraints?
-
-Note the answers - incorporate refinements in the merge phase.
-
----
-
-## Phase 5: Compete (Codex)
-
-**Goal**: Get Codex's independent draft and critique of your draft.
-
-### Execute Codex:
-
-Run this command (substitute the actual sprint number for NNN):
+Run Codex as a yielded, pollable process, substituting `NNN` and the
+conventions file name:
 
 ```bash
-codex exec -s workspace-write "Please read docs/sprints/drafts/SPRINT-NNN-INTENT.md - this is a concentrated intent for our next sprint. Fully familiarize yourself with our sprint planning style (see docs/sprints/README.md) and project structure (see AGENTS.md) and project goals. Then I want you to draft docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md. Only AFTER your draft is complete, I want you to read Claude's draft at docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT.md and write docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md" < /dev/null
+codex exec -s workspace-write "Read docs/sprints/drafts/SPRINT-NNN-INTENT.md; it is the concentrated intent for our next sprint, including Required Sections and Interview Answers. Familiarize yourself with our sprint planning style in docs/sprints/README.md and with project conventions in <conventions file>, and inspect the relevant codebase areas. Then write your own draft to docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md. Only AFTER your draft is complete, read Claude's draft at docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT.md and write a specific, actionable critique of it to docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md. Do not edit Claude's draft and do not write the final sprint document." < /dev/null
 ```
 
-Notes on the invocation:
+Invocation rules:
 
-- `exec` is a subcommand; flags belong **after** it. `--full-auto` was removed in current `codex` versions — use `-s workspace-write` (sandbox with write access to the working tree) instead.
-- `--model` is intentionally omitted. Pinning a model name (e.g. `gpt-5.5`) breaks when codex updates its model list. Let codex pick its default.
-- `< /dev/null` closes stdin. When `codex exec` is launched in a background or non-interactive context with stdin still open, it can hang waiting for input even though the prompt was provided as an argument.
-- The prompt references `AGENTS.md`, not `CLAUDE.md` — this repo does not have a `CLAUDE.md`.
+- `exec` is a subcommand; flags go after it. `-s workspace-write` gives Codex
+  write access to the working tree (`--full-auto` no longer exists).
+- Do not pass `--model`; a pinned name breaks when Codex updates its model
+  list.
+- Keep `< /dev/null`. With stdin open, a non-interactive `codex exec` can hang
+  waiting for input even though the prompt was passed as an argument.
+- Report progress to the user at least once per minute while it runs.
+- Treat 15 minutes with no terminal output and neither expected file as a
+  stall. Interrupt, run `codex --version`, and retry once with a prompt that
+  lists only the files to read and the two files to write, keeping
+  `< /dev/null`.
+- After exit, verify both files exist, are non-empty, and contain what was
+  asked (a sprint draft; a critique). Do not trust exit status alone.
+- If the retry also stalls or fails, the phase is blocked: stop, keep the
+  Phase 1-4 artifacts, and do not merge.
 
-Invocation reliability requirements:
+Then read both files:
 
-- Run the command as a yielded/pollable process and keep the user informed at
-  least once per minute.
-- Treat 5 minutes with no terminal output **and** neither expected artifact as
-  a stalled attempt. Interrupt it, verify `codex --version`, and retry once with
-  the same required files and a shorter prompt. Keep `< /dev/null` on the retry.
-- After exit, verify both expected files exist, are non-empty, and have the
-  requested roles. Do not trust process exit status alone.
-- If the retry also stalls or fails, stop and report the compete phase as
-  blocked. Preserve the completed orientation, intent, draft, and interview;
-  do not fabricate a competing draft or critique and do not merge without it.
+- `docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md`
+- `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md`
 
-### Wait for Codex to complete.
+### Phase 6: Merge
 
-Codex will produce:
-- `docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md` - Its independent draft
-- `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md` - Its critique of your draft
+1. Evaluate the critique: which points are valid, what you missed, what you
+   defend.
+2. Compare the drafts on architecture, phasing and ordering, risk coverage,
+   and Definition of Done completeness.
+3. Write `docs/sprints/drafts/SPRINT-NNN-MERGE-NOTES.md`:
 
-### Read the outputs:
-
-Once Codex completes, read both files:
-1. `docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md`
-2. `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md`
-
----
-
-## Phase 6: Merge
-
-**Goal**: Synthesize the best ideas into a final sprint document.
-
-### Merge process:
-
-1. **Analyze Codex's critique** of your draft:
-   - Which criticisms are valid?
-   - What did you miss?
-   - What should you defend?
-
-2. **Compare the two drafts**:
-   - Architecture approach differences
-   - Phasing/ordering differences
-   - Risk identification gaps
-   - Definition of Done completeness
-
-3. **Document the synthesis**:
-
-   Write to `docs/sprints/drafts/SPRINT-NNN-MERGE-NOTES.md`:
    ```markdown
    # Sprint NNN Merge Notes
 
    ## Claude Draft Strengths
-   - ...
-
    ## Codex Draft Strengths
-   - ...
-
    ## Valid Critiques Accepted
-   - ...
-
    ## Critiques Rejected (with reasoning)
-   - ...
-
    ## Interview Refinements Applied
-   - ...
-
    ## Final Decisions
-   - ...
    ```
 
-4. **Write the final sprint document**:
+4. Write `docs/sprints/SPRINT-NNN.md` following the sprint document
+   contract, combining the best of both drafts, the accepted critiques, and
+   the interview answers.
+5. Run `go run docs/sprints/tracker.go sync`.
+6. Request approval as described under Output. Then:
+   - If the user requests changes: revise the final document, re-run step 5,
+     and ask again.
+   - If the user approves and the branch is `main`: create the implementation
+     branch. Implementation never happens on `main`. The uncommitted drafts
+     and `SPRINT-NNN.md` travel with the working tree.
 
-   Create `docs/sprints/SPRINT-NNN.md` incorporating:
-   - Best ideas from both drafts
-   - Responses to valid critiques
-   - Interview refinements
-
-   **REQUIRED section: `## Documentation Manifest`**
-
-   Every sprint document MUST include a `## Documentation Manifest` section listing every ADR + cross-cutting doc that needs to be created or amended. This is the contract the `sprint` skill verifies before marking the sprint complete — items here are NOT optional and NOT collapsed into a Phase 6 task list buried in tables.
-
-   Format:
-
-   ```markdown
-   ## Documentation Manifest
-
-   The implementation sprint MUST land the following docs changes alongside the code. The `sprint` skill verifies each file in this list was modified before marking the sprint complete.
-
-   ### New ADRs
-
-   - `docs/adr/NNNN-<slug>.md` — one-paragraph summary of what it codifies.
-
-   ### Amended ADRs
-
-   - `docs/adr/NNNN-<existing>.md` — one-sentence note on which decision the amendment addresses.
-
-   ### Cross-cutting docs
-
-   - `current_status.md` — flip <gap row>, note new entity/capability.
-   - `docs/product-architecture.md` — section to update or add.
-   - `local_setup.md` — if a new fixture / CLI / setup step lands.
-
-   ### Skipped (with reasoning)
-
-   - `docs/adr/NNNN-X.md` — considered, not touched because <reason>.
-   ```
-
-   Sprints that genuinely require zero docs changes still get a Manifest section that explicitly says "No documentation changes required because <reason>." Empty manifest is forbidden — the planner must consciously decide.
-
-5. **Update the ledger**:
-   ```bash
-   go run docs/sprints/tracker.go sync
-   ```
-
-6. **Show the user** the final document and ask for approval.
-
-7. **Cut an implementation branch (only after the user approves).** Never
-   implement on `main`. Once — and only once — the user has approved the final
-   sprint document, create a dedicated branch so all subsequent coding lands off
-   `main`. The uncommitted planning drafts and `SPRINT-NNN.md` you just wrote
-   travel onto the new branch automatically (`git checkout -b` carries the
-   working tree with it).
-
-   Branch naming follows the repo convention `project/<project>/<milestone>`
-   (e.g. `project/chat-providers-vertical-slice/m6-electron-chat`). Map it as:
-   - `<project>` — the kebab-case slug of the project this sprint belongs to,
-     as identified during Phase 1 orientation (match an existing
-     `docs/projects/<slug>/` directory when one applies).
-   - `<milestone>` — this sprint, as `sprint-NNN-<slug>`, where `<slug>` is a
-     kebab-case slug of the sprint title (e.g. "Connector Fleet" ->
-     `connector-fleet`).
-
-   ```bash
-   current=$(git rev-parse --abbrev-ref HEAD)
-   if [ "$current" = "main" ]; then
+     ```bash
      git checkout -b "project/<project>/sprint-NNN-<slug>"
-   else
-     echo "Already on '$current' (not main) — staying on this branch; no new branch created."
-   fi
-   ```
+     ```
 
-   Rules:
-   - Do this **after** approval, never before. If the user requests changes
-     instead of approving, keep iterating on the current branch and re-ask.
-   - If already on a non-`main` branch, do not create a second branch — reuse
-     the current one and say so.
-   - Do not commit or push here; this step only establishes the branch. Commits
-     happen during implementation (e.g. the `sprint` skill), following the
-     repo's Conventional Commits convention.
-   - Confirm to the user which branch implementation will happen on.
+     `<project>` is the kebab-case slug of the project this sprint belongs
+     to: match an existing `docs/projects/<slug>/` directory when one applies;
+     if none does and the project is not obvious from Phase 1, ask the user
+     for it in the approval request. `<slug>` is the kebab-case sprint title
+     (for example "Connector Fleet" becomes `connector-fleet`).
+   - If the user approves and the branch is not `main`: stay on it and create
+     nothing.
+
+   Do not commit or push in this phase; commits belong to implementation
+   (the `sprint` skill).
 
 ---
 
-## File Structure
+## Output
 
-After megaplan completes, you'll have:
+### Progress updates
 
-```
-docs/sprints/
-├── drafts/
-│   ├── SPRINT-NNN-INTENT.md                    # Concentrated intent (Phase 2)
-│   ├── SPRINT-NNN-CLAUDE-DRAFT.md              # Your draft (Phase 3)
-│   ├── SPRINT-NNN-CODEX-DRAFT.md               # Codex draft (Phase 5)
-│   ├── SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md  # Codex critique (Phase 5)
-│   └── SPRINT-NNN-MERGE-NOTES.md               # Synthesis notes (Phase 6)
-└── SPRINT-NNN.md                               # Final merged sprint
-```
+Post one line at each phase transition naming the phase and its artifact.
+While Codex runs, post progress at least once per minute.
 
----
+### Approval request
 
-## Output Checklist
+After Phase 6 step 5, send the user: the path to `docs/sprints/SPRINT-NNN.md`,
+a short summary of the sprint's approach and the key decisions from the merge
+notes, the project slug question if needed, and an explicit request to
+approve or request changes. Do not paste the whole document.
 
-At the end of this workflow, you should have:
-- [ ] Orientation summary complete
-- [ ] Intent document written (`drafts/SPRINT-NNN-INTENT.md`)
-- [ ] Claude draft written (`drafts/SPRINT-NNN-CLAUDE-DRAFT.md`)
+### Final report
+
+After the branch decision, tell the user which branch implementation will
+happen on and whether it was created or reused, and confirm the checklist
+below is complete. Mention any skipped `tracker.go` commands.
+
+### Blocked report
+
+If a phase is blocked, say which phase, what was attempted (including any
+retry), which artifacts exist on disk, and that no merge was produced.
+
+### Completion checklist
+
+- [ ] Orientation summary written
+- [ ] `docs/sprints/drafts/SPRINT-NNN-INTENT.md` written, with Interview Answers
+- [ ] `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT.md` written
 - [ ] Interview conducted (2-4 questions answered)
-- [ ] Codex executed and completed
-- [ ] Codex draft received (`drafts/SPRINT-NNN-CODEX-DRAFT.md`)
-- [ ] Codex critique received (`drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md`)
-- [ ] Merge notes written (`drafts/SPRINT-NNN-MERGE-NOTES.md`)
-- [ ] Final sprint document written (`SPRINT-NNN.md`)
-- [ ] Final sprint document includes a `## Documentation Manifest` section (NEW ADRs + amended ADRs + cross-cutting docs, or an explicit "no docs required because …")
-- [ ] Ledger updated via `go run docs/sprints/tracker.go sync`
+- [ ] `docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md` received and read
+- [ ] `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md` received and read
+- [ ] `docs/sprints/drafts/SPRINT-NNN-MERGE-NOTES.md` written
+- [ ] `docs/sprints/SPRINT-NNN.md` written, with a non-empty Documentation Manifest
+- [ ] Ledger synced via `go run docs/sprints/tracker.go sync`
 - [ ] User approved the final document
-- [ ] Implementation branch cut off `main` after approval (or intentionally reused an existing non-`main` branch)
-
----
-
-## Reference
-
-- Sprint conventions: `docs/sprints/README.md`
-- Project overview: `AGENTS.md`
-- Recent sprints: `docs/sprints/SPRINT-*.md` (highest numbers)
+- [ ] Implementation branch created off `main`, or existing non-`main` branch reused
