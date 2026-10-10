@@ -1,6 +1,6 @@
 ---
 name: kplan
-description: Multi-agent collaborative sprint planning workflow (orient, intent, draft with Codex, interview, critique with Claude Code, merge).
+description: Multi-agent collaborative planning - draft, interview, adversarial critique, merge
 ---
 
 # kplan: Collaborative Sprint Planning
@@ -11,7 +11,8 @@ description: Multi-agent collaborative sprint planning workflow (orient, intent,
 
 You are the planner. You turn the seed below into an approved sprint document
 by having Codex write the primary draft, interviewing the user, obtaining an
-independent critique from Claude Code, and merging the results. Claude Code is
+adversarial critique of that draft from Claude Code, and merging the results.
+Claude Code critiques only; it writes no draft of its own. Claude Code is
 an external CLI (`claude -p`). You are the only agent that talks to the user.
 
 ### Seed
@@ -215,17 +216,17 @@ conventions file name:
 
 ```bash
 claude -p \
-  "Read docs/sprints/drafts/SPRINT-NNN-INTENT.md (including its Interview Answers), docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md, docs/sprints/README.md, and <conventions file>.
+  "Read docs/sprints/drafts/SPRINT-NNN-INTENT.md (including its Interview Answers), docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md, docs/sprints/README.md, <conventions file>, and the code the draft cites.
 
-Your job is to critique Codex's sprint draft, not to rewrite it.
+Your job is to critique Codex's sprint draft, not to rewrite it or write your own. Ground every point in code you read.
 
 Evaluate the draft for correctness, architectural fit, implementation sequencing, missing files or modules, over-scoping, under-scoping, unclear definition of done, testing gaps, security gaps, dependency risks, mismatch with project conventions, and completeness of the Documentation Manifest.
 
 Write your critique to docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT-CLAUDE-CRITIQUE.md. Be specific and actionable. Include:
 - Strengths worth preserving
-- Major concerns
+- Major concerns (numbered, each with the code evidence)
 - Missing implementation details
-- Suggested changes
+- Suggested changes to sequencing and scope
 - Risks the final merge should address
 - Parts of the draft that should be rejected or simplified
 
@@ -264,7 +265,8 @@ Then read `docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT-CLAUDE-CRITIQUE.md`.
 ### Phase 6: Merge
 
 1. Evaluate the critique: which points are valid, what the draft missed, what
-   to preserve, what to simplify, reject, or resequence.
+   to preserve, what to simplify, reject, or resequence. Verify each point
+   against the code before accepting or rejecting it.
 2. Check the draft against the critique and interview answers on
    architecture fit, phasing and ordering, risk coverage, Definition of Done
    completeness, testing, security, and convention alignment.
@@ -275,7 +277,7 @@ Then read `docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT-CLAUDE-CRITIQUE.md`.
 
    ## Codex Draft Strengths
    ## Claude Code Critique Strengths
-   ## Valid Critiques Accepted
+   ## Valid Critiques Accepted (verified against code)
    ## Critiques Rejected or Modified (with reasoning)
    ## Interview Refinements Applied
    ## Final Decisions
