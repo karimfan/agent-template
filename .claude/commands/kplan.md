@@ -1,5 +1,5 @@
 ---
-description: Multi-agent collaborative planning - draft, interview, compete with Codex, merge
+description: Multi-agent collaborative planning - draft, interview, adversarial critique, merge
 ---
 
 # kplan: Collaborative Sprint Planning
@@ -9,8 +9,9 @@ description: Multi-agent collaborative planning - draft, interview, compete with
 ### Role
 
 You are the planner. You turn the seed below into an approved sprint document
-by writing your own draft, interviewing the user, obtaining an independent
-draft and critique from Codex, and merging the results. Codex is an external
+by writing the draft, interviewing the user, obtaining an adversarial
+critique of your draft from Codex, and merging the results. Codex critiques
+only; it writes no draft of its own. Codex is an external
 CLI (`codex exec`). You are the only agent that talks to the user.
 
 ### Seed
@@ -139,7 +140,7 @@ must be self-contained:
 
 ## Required Sections
 
-Drafts follow the template in docs/sprints/README.md plus
+The draft follows the template in docs/sprints/README.md plus
 `## Risks & Mitigations`, `## Open Questions`, and `## Documentation Manifest`
 in this format:
 
@@ -151,7 +152,7 @@ in this format:
 
 ## Open Questions
 
-[Questions the drafts should try to answer]
+[Questions the draft and critique should try to answer]
 ```
 
 ### Phase 3: Draft
@@ -174,16 +175,16 @@ any the seed already answers unambiguously:
    missed?
 
 Append the questions and answers to the intent document under a new
-`## Interview Answers` section so Codex drafts against them. Apply them to
+`## Interview Answers` section so Codex critiques against them. Apply them to
 your own draft in Phase 6, not now.
 
-### Phase 5: Compete
+### Phase 5: Critique (Codex)
 
 Run Codex as a yielded, pollable process, substituting `NNN` and the
 conventions file name:
 
 ```bash
-codex exec -s workspace-write "Read docs/sprints/drafts/SPRINT-NNN-INTENT.md; it is the concentrated intent for our next sprint, including Required Sections and Interview Answers. Familiarize yourself with our sprint planning style in docs/sprints/README.md and with project conventions in <conventions file>, and inspect the relevant codebase areas. Then write your own draft to docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md. Only AFTER your draft is complete, read Claude's draft at docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT.md and write a specific, actionable critique of it to docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md. Do not edit Claude's draft and do not write the final sprint document." < /dev/null
+codex exec -s workspace-write "Read docs/sprints/drafts/SPRINT-NNN-INTENT.md (including its Interview Answers), docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT.md, docs/sprints/README.md, <conventions file>, and the code the draft cites. Your job is to critique Claude's sprint draft, not to rewrite it or write your own. Ground every point in code you read. Evaluate correctness against the code, architectural fit, sequencing, missing files or modules, scope, definition of done, testing, security, dependencies, and completeness of the Documentation Manifest. Write a specific, actionable critique to docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md with: Strengths worth preserving; Major concerns (numbered, each with the code evidence); Missing implementation details; Suggested changes to sequencing and scope; Risks the final merge should address. Do not edit Claude's draft and do not write the final sprint document." < /dev/null
 ```
 
 Invocation rules:
@@ -195,42 +196,39 @@ Invocation rules:
 - Keep `< /dev/null`. With stdin open, a non-interactive `codex exec` can hang
   waiting for input even though the prompt was passed as an argument.
 - Report progress to the user at least once per minute while it runs.
-- Treat 15 minutes with no terminal output and neither expected file as a
-  stall. Interrupt, run `codex --version`, and retry once with a prompt that
-  lists only the files to read and the two files to write, keeping
-  `< /dev/null`.
-- After exit, verify both files exist, are non-empty, and contain what was
-  asked (a sprint draft; a critique). Do not trust exit status alone.
+- Treat 15 minutes with no terminal output and no critique file as a stall.
+  Interrupt, run `codex --version`, and retry once with a prompt that lists
+  only the files to read and the file to write, keeping `< /dev/null`.
+- After exit, verify the critique exists, is non-empty, and is a critique.
+  Do not trust exit status alone.
 - If the retry also stalls or fails, the phase is blocked: stop, keep the
   Phase 1-4 artifacts, and do not merge.
 
-Then read both files:
-
-- `docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md`
-- `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md`
+Then read `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md`.
 
 ### Phase 6: Merge
 
 1. Evaluate the critique: which points are valid, what you missed, what you
-   defend.
-2. Compare the drafts on architecture, phasing and ordering, risk coverage,
-   and Definition of Done completeness.
+   defend. Verify each point against the code before accepting or rejecting
+   it.
+2. Check the draft against the critique and interview answers on
+   architecture, phasing and ordering, risk coverage, and Definition of Done
+   completeness.
 3. Write `docs/sprints/drafts/SPRINT-NNN-MERGE-NOTES.md`:
 
    ```markdown
    # Sprint NNN Merge Notes
 
    ## Claude Draft Strengths
-   ## Codex Draft Strengths
-   ## Valid Critiques Accepted
+   ## Valid Critiques Accepted (verified against code)
    ## Critiques Rejected (with reasoning)
    ## Interview Refinements Applied
    ## Final Decisions
    ```
 
 4. Write `docs/sprints/SPRINT-NNN.md` following the sprint document
-   contract, combining the best of both drafts, the accepted critiques, and
-   the interview answers.
+   contract, combining the draft, the accepted critiques, and the interview
+   answers.
 5. Run `go run docs/sprints/tracker.go sync`.
 6. Request approval as described under Output. Then:
    - If the user requests changes: revise the final document, re-run step 5,
@@ -287,7 +285,6 @@ retry), which artifacts exist on disk, and that no merge was produced.
 - [ ] `docs/sprints/drafts/SPRINT-NNN-INTENT.md` written, with Interview Answers
 - [ ] `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT.md` written
 - [ ] Interview conducted (2-4 questions answered)
-- [ ] `docs/sprints/drafts/SPRINT-NNN-CODEX-DRAFT.md` received and read
 - [ ] `docs/sprints/drafts/SPRINT-NNN-CLAUDE-DRAFT-CODEX-CRITIQUE.md` received and read
 - [ ] `docs/sprints/drafts/SPRINT-NNN-MERGE-NOTES.md` written
 - [ ] `docs/sprints/SPRINT-NNN.md` written, with a non-empty Documentation Manifest
